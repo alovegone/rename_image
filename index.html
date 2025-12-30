@@ -109,7 +109,7 @@
         <div class="input-group">
             <label id="ui-brand-label">品牌名称</label>
             <div class="modern-input-wrapper">
-                <input type="text" id="brandInput" placeholder="输入品牌名，也可以点击+号添加">
+                <input type="text" id="brandInput">
                 <button class="btn-add-tag" onclick="addTag('brand')">+</button>
             </div>
             <div id="brand-tags" class="tag-container"></div>
@@ -118,14 +118,16 @@
         <div class="input-group">
             <label id="ui-product-label">产品名称</label>
             <div class="modern-input-wrapper">
-                <input type="text" id="productInput" placeholder="输入产品名，也可以点击+号添加">
+                <input type="text" id="productInput">
                 <button class="btn-add-tag" onclick="addTag('product')">+</button>
             </div>
             <div id="product-tags" class="tag-container"></div>
         </div>
         
-        <label id="ui-desc-label">描述列表 (每行一个)</label>
-        <textarea id="descText" placeholder="粘贴描述列表 (选填)..." oninput="refreshList()"></textarea>
+        <div class="input-group">
+            <label id="ui-desc-label">图片描述 (每行一个)</label>
+            <textarea id="descText" oninput="refreshList()"></textarea>
+        </div>
         
         <button class="btn btn-primary" id="ui-refresh-btn" onclick="refreshList()">🔄 刷新预览</button>
         <button class="btn btn-success" id="zipBtn" disabled onclick="downloadAll()">📦 打包下载 (ZIP)</button>
@@ -159,17 +161,19 @@
     const i18n = {
         en: {
             title: "Image Rename Pro", langBtn: "切换至 中文", configH3: "Settings", dropZone: "📁 Click to Select or Drag Images",
-            brandLabel: "Brand", brandPlaceholder: "Enter brand or click +", 
-            productLabel: "Product", productPlaceholder: "Enter product or click +",
-            descLabel: "Descriptions", refreshBtn: "🔄 Refresh Preview", zipBtn: "📦 Download ZIP",
+            brandLabel: "Brand Name", brandPlaceholder: "Enter brand or click +", 
+            productLabel: "Product Name", productPlaceholder: "Enter product or click +",
+            descLabel: "Image Description (one per line)", descPlaceholder: "Paste description list (optional)...",
+            refreshBtn: "🔄 Refresh Preview", zipBtn: "📦 Download ZIP",
             previewH3: "Preview", thImg: "IMG", thName: "New Name", thAction: "Action",
             dlSingle: "DL", del: "Del", emptyMsg: "Waiting for images...", statusZip: "Packing...", statusDone: "Done!"
         },
         zh: {
-            title: "小宋的图片重命名助手", langBtn: "Switch to English", configH3: "基础设置", dropZone: "📁 点击选择或拖入多张图片",
+            title: "图片重命名专业版", langBtn: "Switch to English", configH3: "基础设置", dropZone: "📁 点击选择或拖入多张图片",
             brandLabel: "品牌名称", brandPlaceholder: "输入品牌名，也可以点击+号添加",
             productLabel: "产品名称", productPlaceholder: "输入产品名，也可以点击+号添加",
-            descLabel: "描述列表 (每行一个)", refreshBtn: "🔄 刷新预览", zipBtn: "📦 打包下载 (ZIP)",
+            descLabel: "图片描述 (每行一个)", descPlaceholder: "粘贴描述列表 (选填)...",
+            refreshBtn: "🔄 刷新预览", zipBtn: "📦 打包下载 (ZIP)",
             previewH3: "重命名预览", thImg: "预览", thName: "新文件名", thAction: "操作",
             dlSingle: "下载", del: "移除", emptyMsg: "等待导入图片...", statusZip: "正在打包...", statusDone: "导出完成！"
         }
@@ -242,6 +246,7 @@
         document.getElementById('ui-product-label').innerText = lang.productLabel;
         document.getElementById('productInput').placeholder = lang.productPlaceholder;
         document.getElementById('ui-desc-label').innerText = lang.descLabel;
+        document.getElementById('descText').placeholder = lang.descPlaceholder;
         document.getElementById('ui-refresh-btn').innerText = lang.refreshBtn;
         document.getElementById('zipBtn').innerText = lang.zipBtn;
         document.getElementById('ui-preview-h3').innerText = lang.previewH3;
@@ -255,7 +260,6 @@
     function refreshList() {
         const brand = document.getElementById('brandInput').value.trim();
         const product = document.getElementById('productInput').value.trim();
-        // 修正：去除空行干扰
         const descs = document.getElementById('descText').value.split('\n').map(v => v.trim());
         const container = document.getElementById('listContainer');
         
@@ -270,11 +274,7 @@
         files.forEach((file, i) => {
             const ext = file.name.split('.').pop().toLowerCase();
             const sn = (i + 1).toString().padStart(2, '0');
-            
-            // 改进点：只有当 descs[i] 真的有内容时才取值，否则不拼接任何后缀
             const d = descs[i] || "";
-            
-            // 使用 filter(Boolean) 确保 [brand, product, sn, ""] 这种组合被 join 时不会产生末尾下划线
             const parts = [brand, product, sn, d].filter(p => p !== "");
             const newName = parts.join('_') + '.' + ext;
             
