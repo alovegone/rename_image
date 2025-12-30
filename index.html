@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Rename Pro - 智能重命名工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #007AFF;
+            --primary-hover: #0062CC;
+            --primary-light: #E5F1FF;
+            --danger: #FF3B30;
+            --success: #34C759;
+            --bg: #F5F5F7;
+            --card-bg: #FFFFFF;
+            --border: #D1D1D6;
+            --text: #1D1D1F;
+            --text-secondary: #86868B;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif; 
+            background: var(--bg); margin: 0; padding: 25px; color: var(--text); 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto 15px; }
+        .lang-switch { cursor: pointer; padding: 6px 16px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 99px; font-size: 13px; transition: 0.2s; }
+        .lang-switch:hover { background: var(--primary); color: white; }
+
+        .container { display: flex; gap: 24px; max-width: 1400px; margin: 0 auto; height: 86vh; }
+        
+        .config-panel { 
+            width: 380px; background: var(--card-bg); padding: 24px; border-radius: 18px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); display: flex; flex-direction: column; 
+            border: 1px solid rgba(0,0,0,0.05); overflow-y: auto;
+        }
+        
+        #drop-zone { 
+            border: 2px dashed var(--border); border-radius: 12px; padding: 40px 15px; 
+            text-align: center; color: var(--text-secondary); cursor: pointer; 
+            background: #FAFAFA; margin-bottom: 20px; transition: all 0.3s ease;
+        }
+        #drop-zone.dragover { border-color: var(--primary); background-color: var(--primary-light); color: var(--primary); transform: scale(1.02); }
+        
+        .input-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+        .modern-input-wrapper {
+            display: flex; align-items: center; background: #F2F2F7;
+            border-radius: 10px; padding: 4px 4px 4px 12px; border: 1px solid transparent;
+        }
+        .modern-input-wrapper:focus-within { border-color: var(--primary); background: #fff; }
+        .modern-input-wrapper input { border: none; background: transparent; flex: 1; outline: none; font-size: 13px; height: 32px; }
+
+        .btn-add-tag {
+            background: var(--primary); color: white; border: none; width: 32px; height: 32px;
+            border-radius: 8px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center;
+        }
+
+        .tag-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .tag { 
+            background: #E9E9EB; color: #3A3A3C; padding: 4px 12px; border-radius: 8px; 
+            font-size: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center;
+        }
+        .tag:hover { background: var(--primary); color: white; }
+        .tag .del-tag { margin-left: 8px; opacity: 0.5; }
+
+        textarea { width: 100%; border-radius: 12px; border: 1px solid var(--border); padding: 12px; font-size: 13px; background: #F2F2F7; resize: none; height: 100px; outline: none; box-sizing: border-box; }
+        
+        .preview-panel { flex: 1; background: var(--card-bg); padding: 24px; border-radius: 18px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .list-area { flex: 1; overflow-y: auto; border-radius: 12px; background: #FAFAFA; border: 1px solid #EFEEF2; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #F2F2F7; padding: 14px; text-align: left; font-size: 12px; color: var(--text-secondary); }
+        td { padding: 10px 14px; border-bottom: 1px solid #EFEEF2; vertical-align: middle; }
+        
+        .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; }
+        .name-edit { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; box-sizing: border-box;}
+        
+        .btn { padding: 14px; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; transition: 0.2s; text-align: center; }
+        .btn-primary { background: var(--primary); color: white; margin-top: 10px; width: 100%; }
+        .btn-success { background: var(--success); color: white; font-size: 16px; margin-top: 10px; width: 100%; }
+        
+        .btn-mini { padding: 6px 10px; font-size: 11px; background: #fff; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+        .btn-del { color: var(--danger); border-color: #FFD5D2; background: #FFF5F5; margin-left: 5px; }
+        .btn-del:hover { background: var(--danger); color: white; border-color: var(--danger); }
+        
+        .action-cell { display: flex; align-items: center; gap: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2 id="ui-title">Image Rename Pro</h2>
+    <div class="lang-switch" onclick="toggleLanguage()" id="ui-lang-btn">Switch to English</div>
+</div>
+
+<div class="container">
+    <div class="config-panel">
+        <h3 style="margin:0 0 15px 0" id="ui-config-h3">基础设置</h3>
+        
+        <div id="drop-zone" onclick="document.getElementById('fileInput').click()">
+            <span id="ui-drop-text">📁 点击选择或拖入多张图片</span>
+            <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+        </div>
+        
+        <div class="input-group">
+            <label id="ui-brand-label">品牌名称</label>
+            <div class="modern-input-wrapper">
+                <input type="text" id="brandInput" placeholder="输入品牌名，也可以点击+号添加">
+                <button class="btn-add-tag" onclick="addTag('brand')">+</button>
+            </div>
+            <div id="brand-tags" class="tag-container"></div>
+        </div>
+
+        <div class="input-group">
+            <label id="ui-product-label">产品名称</label>
+            <div class="modern-input-wrapper">
+                <input type="text" id="productInput" placeholder="输入产品名，也可以点击+号添加">
+                <button class="btn-add-tag" onclick="addTag('product')">+</button>
+            </div>
+            <div id="product-tags" class="tag-container"></div>
+        </div>
+        
+        <label id="ui-desc-label">描述列表 (每行一个)</label>
+        <textarea id="descText" placeholder="粘贴描述列表 (选填)..." oninput="refreshList()"></textarea>
+        
+        <button class="btn btn-primary" id="ui-refresh-btn" onclick="refreshList()">🔄 刷新预览</button>
+        <button class="btn btn-success" id="zipBtn" disabled onclick="downloadAll()">📦 打包下载 (ZIP)</button>
+    </div>
+
+    <div class="preview-panel">
+        <h3 style="margin:0 0 15px 0" id="ui-preview-h3">重命名预览</h3>
+        <div class="list-area">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="70" id="ui-th-img">预览</th>
+                        <th id="ui-th-name">新文件名 (可编辑)</th>
+                        <th width="120" id="ui-th-action">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="listContainer">
+                    <tr><td colspan="3" style="text-align:center; color:#ccc; padding-top:100px;" id="ui-empty-msg">等待导入图片...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="status" style="font-size:12px; margin-top:10px; text-align:right; color:var(--text-secondary)"></div>
+    </div>
+</div>
+
+<script>
+    let files = [];
+    let currentLang = 'zh';
+    let tags = { brand: [], product: [] };
+
+    const i18n = {
+        en: {
+            title: "Image Rename Pro", langBtn: "切换至 中文", configH3: "Settings", dropZone: "📁 Click to Select or Drag Images",
+            brandLabel: "Brand", brandPlaceholder: "Enter brand or click +", 
+            productLabel: "Product", productPlaceholder: "Enter product or click +",
+            descLabel: "Descriptions", refreshBtn: "🔄 Refresh Preview", zipBtn: "📦 Download ZIP",
+            previewH3: "Preview", thImg: "IMG", thName: "New Name", thAction: "Action",
+            dlSingle: "DL", del: "Del", emptyMsg: "Waiting for images...", statusZip: "Packing...", statusDone: "Done!"
+        },
+        zh: {
+            title: "小宋的图片重命名助手", langBtn: "Switch to English", configH3: "基础设置", dropZone: "📁 点击选择或拖入多张图片",
+            brandLabel: "品牌名称", brandPlaceholder: "输入品牌名，也可以点击+号添加",
+            productLabel: "产品名称", productPlaceholder: "输入产品名，也可以点击+号添加",
+            descLabel: "描述列表 (每行一个)", refreshBtn: "🔄 刷新预览", zipBtn: "📦 打包下载 (ZIP)",
+            previewH3: "重命名预览", thImg: "预览", thName: "新文件名", thAction: "操作",
+            dlSingle: "下载", del: "移除", emptyMsg: "等待导入图片...", statusZip: "正在打包...", statusDone: "导出完成！"
+        }
+    };
+
+    window.onload = () => {
+        const saved = localStorage.getItem('rename_tags_final_v6');
+        if (saved) { tags = JSON.parse(saved); renderTags('brand'); renderTags('product'); }
+        updateUI();
+    };
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = () => { dropZone.classList.remove('dragover'); };
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        addFiles(e.dataTransfer.files);
+    };
+
+    fileInput.onchange = (e) => addFiles(e.target.files);
+
+    function addFiles(incomingFiles) {
+        const newFiles = Array.from(incomingFiles).filter(f => f.type.startsWith('image/'));
+        files = [...files, ...newFiles].sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
+        refreshList();
+    }
+
+    function removeImage(index) {
+        files.splice(index, 1);
+        refreshList();
+    }
+
+    function addTag(type) {
+        const val = document.getElementById(type + 'Input').value.trim();
+        if (val && !tags[type].includes(val)) {
+            tags[type].push(val);
+            localStorage.setItem('rename_tags_final_v6', JSON.stringify(tags));
+            renderTags(type);
+        }
+    }
+
+    function removeTag(type, val, e) {
+        e.stopPropagation();
+        tags[type] = tags[type].filter(t => t !== val);
+        localStorage.setItem('rename_tags_final_v6', JSON.stringify(tags));
+        renderTags(type);
+    }
+
+    function renderTags(type) {
+        document.getElementById(type + '-tags').innerHTML = tags[type].map(t => `
+            <div class="tag" onclick="useTag('${type}', '${t}')">${t} <span class="del-tag" onclick="removeTag('${type}', '${t}', event)">×</span></div>
+        `).join('');
+    }
+
+    function useTag(type, val) { document.getElementById(type + 'Input').value = val; refreshList(); }
+
+    function toggleLanguage() { currentLang = currentLang === 'en' ? 'zh' : 'en'; updateUI(); }
+
+    function updateUI() {
+        const lang = i18n[currentLang];
+        document.getElementById('ui-title').innerText = lang.title;
+        document.getElementById('ui-lang-btn').innerText = lang.langBtn;
+        document.getElementById('ui-config-h3').innerText = lang.configH3;
+        document.getElementById('ui-drop-text').innerText = lang.dropZone;
+        document.getElementById('ui-brand-label').innerText = lang.brandLabel;
+        document.getElementById('brandInput').placeholder = lang.brandPlaceholder;
+        document.getElementById('ui-product-label').innerText = lang.productLabel;
+        document.getElementById('productInput').placeholder = lang.productPlaceholder;
+        document.getElementById('ui-desc-label').innerText = lang.descLabel;
+        document.getElementById('ui-refresh-btn').innerText = lang.refreshBtn;
+        document.getElementById('zipBtn').innerText = lang.zipBtn;
+        document.getElementById('ui-preview-h3').innerText = lang.previewH3;
+        document.getElementById('ui-th-img').innerText = lang.thImg;
+        document.getElementById('ui-th-name').innerText = lang.thName;
+        document.getElementById('ui-th-action').innerText = lang.thAction;
+        document.getElementById('ui-empty-msg').innerText = lang.emptyMsg;
+        if (files.length > 0) refreshList();
+    }
+
+    function refreshList() {
+        const brand = document.getElementById('brandInput').value.trim();
+        const product = document.getElementById('productInput').value.trim();
+        // 修正：去除空行干扰
+        const descs = document.getElementById('descText').value.split('\n').map(v => v.trim());
+        const container = document.getElementById('listContainer');
+        
+        container.innerHTML = '';
+        document.getElementById('zipBtn').disabled = (files.length === 0);
+
+        if (files.length === 0) {
+            container.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#ccc; padding-top:100px;">${i18n[currentLang].emptyMsg}</td></tr>`;
+            return;
+        }
+
+        files.forEach((file, i) => {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const sn = (i + 1).toString().padStart(2, '0');
+            
+            // 改进点：只有当 descs[i] 真的有内容时才取值，否则不拼接任何后缀
+            const d = descs[i] || "";
+            
+            // 使用 filter(Boolean) 确保 [brand, product, sn, ""] 这种组合被 join 时不会产生末尾下划线
+            const parts = [brand, product, sn, d].filter(p => p !== "");
+            const newName = parts.join('_') + '.' + ext;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><img src="${URL.createObjectURL(file)}" class="thumb"></td>
+                <td><input type="text" class="name-edit" id="name_${i}" value="${newName}"></td>
+                <td class="action-cell">
+                    <button class="btn-mini" onclick="downloadSingle(${i})">${i18n[currentLang].dlSingle}</button>
+                    <button class="btn-mini btn-del" onclick="removeImage(${i})">${i18n[currentLang].del}</button>
+                </td>
+            `;
+            container.appendChild(tr);
+        });
+    }
+
+    function downloadSingle(idx) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(files[idx]);
+        a.download = document.getElementById(`name_${idx}`).value;
+        a.click();
+    }
+
+    async function downloadAll() {
+        const zip = new JSZip();
+        document.getElementById('status').innerText = i18n[currentLang].statusZip;
+        files.forEach((f, i) => zip.file(document.getElementById(`name_${i}`).value, f));
+        const blob = await zip.generateAsync({type: "blob"});
+        saveAs(blob, "Renamed_Pack.zip");
+        document.getElementById('status').innerText = i18n[currentLang].statusDone;
+    }
+</script>
+</body>
+</html>
